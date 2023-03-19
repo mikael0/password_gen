@@ -11,3 +11,7 @@ To find the optimal solution checking all combinations is required, but it has O
 We can find good, but not globally optimal solution much faster with O(N^2) complexity. 
 
 First solution is implemented in optimal package, second in fast package.
+
+Assumptions made:
+1. English words are only lowercase
+2. English words contain only letters

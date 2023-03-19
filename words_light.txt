@@ -35,7 +35,6 @@ exocoelum
 exocoetidae
 exocoetus
 exocolitis
-exo-condensation
 exocone
 exocrine
 exocrines
@@ -46,7 +45,6 @@ exoculated
 exoculating
 exoculation
 exod
-exod.
 exode
 exoderm
 exodermal
@@ -70,8 +68,6 @@ exoenzyme
 exoenzymic
 exoergic
 exoerythrocytic
-ex-official
-ex-officio
 exogamy
 exogamic
 exogamies
@@ -265,7 +261,6 @@ exotropia
 exotropic
 exotropism
 exp
-exp.
 expalpate
 expand
 expandability
@@ -275,7 +270,6 @@ expandedly
 expandedness
 expander
 expanders
-expander's
 expandibility
 expandible
 expanding
@@ -335,7 +329,6 @@ expectant
 expectantly
 expectation
 expectations
-expectation's
 expectative
 expected
 expectedly
@@ -391,7 +384,6 @@ expedition
 expeditionary
 expeditionist
 expeditions
-expedition's
 expeditious
 expeditiously
 expeditiousness
@@ -421,7 +413,6 @@ expenditor
 expenditrix
 expenditure
 expenditures
-expenditure's
 expends
 expense
 expensed
@@ -463,7 +454,6 @@ experimentally
 experimentarian
 experimentation
 experimentations
-experimentation's
 experimentative
 experimentator
 experimented
@@ -510,7 +500,6 @@ expiator
 expiatory
 expiatoriness
 expiators
-ex-pier
 expilate
 expilation
 expilator
@@ -519,7 +508,6 @@ expirant
 expirate
 expiration
 expirations
-expiration's
 expirator
 expiratory
 expire
@@ -552,10 +540,8 @@ explait
 explanate
 explanation
 explanations
-explanation's
 explanative
 explanatively
-explanato-
 explanator
 explanatory
 explanatorily
@@ -616,7 +602,6 @@ exploitage
 exploitation
 exploitationist
 exploitations
-exploitation's
 exploitative
 exploitatively
 exploitatory
@@ -633,7 +618,6 @@ explorate
 exploration
 explorational
 explorations
-exploration's
 explorative
 exploratively
 explorativeness
@@ -652,9 +636,7 @@ explosible
 explosimeter
 explosion
 explosionist
-explosion-proof
 explosions
-explosion's
 explosive
 explosively
 explosiveness
@@ -675,10 +657,8 @@ exponentiates
 exponentiating
 exponentiation
 exponentiations
-exponentiation's
 exponention
 exponents
-exponent's
 exponible
 export
 exportability
@@ -708,7 +688,6 @@ exposition
 expositional
 expositionary
 expositions
-exposition's
 expositive
 expositively
 expositor
@@ -734,7 +713,6 @@ expostulatory
 exposture
 exposure
 exposures
-exposure's
 expound
 expoundable
 expounded
@@ -742,9 +720,7 @@ expounder
 expounders
 expounding
 expounds
-ex-praetor
 expreme
-ex-president
 express
 expressable
 expressage
@@ -770,7 +746,6 @@ expressionless
 expressionlessly
 expressionlessness
 expressions
-expression's
 expressive
 expressively
 expressiveness
@@ -842,7 +817,6 @@ expurgatorial
 expurgators
 expurge
 expwy
-ex-quay
 exquire
 exquisite
 exquisitely
@@ -852,10 +826,8 @@ exquisitive
 exquisitively
 exquisitiveness
 exr
-exr.
 exradio
 exradius
-ex-rights
 exrupeal
 exrx
 exsanguinate
@@ -895,12 +867,8 @@ exsertile
 exserting
 exsertion
 exserts
-ex-service
-ex-serviceman
-ex-servicemen
 exsheath
 exship
-ex-ship
 exsibilate
 exsibilation
 exsiccant
@@ -939,7 +907,6 @@ exsurge
 exsurgent
 exsuscitate
 ext
-ext.
 exta
 extacie
 extance
@@ -978,7 +945,6 @@ extendable
 extended
 extendedly
 extendedness
-extended-play
 extender
 extenders
 extendibility
@@ -1000,7 +966,6 @@ extensionally
 extensionist
 extensionless
 extensions
-extension's
 extensity
 extensive
 extensively
@@ -1015,6 +980,5 @@ extensure
 extent
 extentions
 extents
-extent's
 extenuate
 extenuated
