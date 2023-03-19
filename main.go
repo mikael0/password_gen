@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"math"
 	"os"
@@ -44,7 +45,7 @@ func calculateWeight(word string, keyboard *map[byte][2]int, keyboardMutex *sync
 }
 
 //Naive approach comparing each combinations in O(n^4)
-func findOptimal() {
+func findOptimal(dictPath string) {
 	minDist := math.MaxInt32
 	var minPath [4]int
 
@@ -56,7 +57,7 @@ func findOptimal() {
 	}
 	keyboardMutex := sync.RWMutex{}
 
-	words := readWordsFromFile("words_tiny.txt")
+	words := readWordsFromFile(dictPath)
 
 	// Set the number of worker goroutines
 	workerCount := runtime.GOMAXPROCS(0)
@@ -118,7 +119,7 @@ func findOptimal() {
 }
 
 //Naive approach comparing each combinations in O(n^4)
-func findMaybeOptimalFast() {
+func findMaybeOptimalFast(dictPath string) {
 	// Define a map for storing best next word to word
 	bestNextWords := make(map[int]int)
 	bestWordsMutex := sync.RWMutex{}
@@ -137,7 +138,7 @@ func findMaybeOptimalFast() {
 	wg.Add(workerCount)
 
 	//read words
-	words := readWordsFromFile("words.txt")
+	words := readWordsFromFile(dictPath)
 	weights := make([]int, len(words))
 	for i := 0; i < len(words); i++ {
 		weights[i] = -1
@@ -242,7 +243,27 @@ func findMaybeOptimalFast() {
 }
 
 func main() {
-	// findOptimal()
-	//uncoment to try
-	findMaybeOptimalFast()
+	dictPath := flag.String("dict", "", "Path to the dictionary file")
+	mode := flag.String("mode", "fast", "Mode of operation (fast or optimal)")
+
+	flag.Parse()
+
+	if *dictPath == "" {
+		fmt.Println("Error: --dict is required")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	if *mode != "fast" && *mode != "optimal" {
+		fmt.Println("Error: --mode must be 'fast' or 'optimal'")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	switch *mode {
+		case "fast": 
+			findMaybeOptimalFast(*dictPath)
+		case "optimal": 
+			findOptimal(*dictPath)
+	}
 }
