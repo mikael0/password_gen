@@ -1,26 +1,29 @@
 package fast
 
 import (
+	"container/heap"
 	"fmt"
 	"math"
 	"password_gen/m/v2/pkg/common"
 	"runtime"
 	"sync"
+
+	"golang.org/x/exp/slices"
 )
 
-// Find not guaranted the best password, but one of the best with O(N^2) complexity
-func Find(dictPath string) {
-	// Define a map for storing best next word to word
-	bestNextWords := make(map[int]int)
-	bestWordsMutex := sync.RWMutex{}
+type Result struct {
+	minDist int
+	path    []int
+}
 
+// Find not guaranted the best password, but one of the best with O(N) complexity
+func Find(dictPath string, startLength int, endLength int, numberOfWords int) {
 	// Define a map of the keyboard keys and their positions
 	keyboard := map[byte][2]int{
 		'q': {0, 0}, 'w': {0, 1}, 'e': {0, 2}, 'r': {0, 3}, 't': {0, 4}, 'y': {0, 5}, 'u': {0, 6}, 'i': {0, 7}, 'o': {0, 8}, 'p': {0, 9},
 		'a': {1, 0}, 's': {1, 1}, 'd': {1, 2}, 'f': {1, 3}, 'g': {1, 4}, 'h': {1, 5}, 'j': {1, 6}, 'k': {1, 7}, 'l': {1, 8},
 		'z': {2, 0}, 'x': {2, 1}, 'c': {2, 2}, 'v': {2, 3}, 'b': {2, 4}, 'n': {2, 5}, 'm': {2, 6},
 	}
-	keyboardMutex := sync.RWMutex{}
 
 	// Set the number of worker goroutines
 	workerCount := runtime.GOMAXPROCS(0)
@@ -29,13 +32,13 @@ func Find(dictPath string) {
 
 	//read words
 	words := common.ReadWordsFromFile(dictPath)
+	weightsMutex := sync.RWMutex{}
 	weights := make([]int, len(words))
 	for i := 0; i < len(words); i++ {
 		weights[i] = -1
 	}
 
-	// Create a channel to communicate the results from the worker goroutines
-	resultCh := make(chan [5]int)
+	weightsChannel := make(chan WordWithWeight)
 
 	// Start the worker goroutines
 	// Start building chains of optimal words by weight
@@ -49,37 +52,39 @@ func Find(dictPath string) {
 		go func(start, end int) {
 			defer wg.Done()
 			for i := start; i < end; i++ {
-				minDist := math.MaxInt32
-				minIdx := -1
-				word1 := words[i]
-				if weights[i] < 0 {
-					weights[i] = common.CalculateWeight(word1, &keyboard, &keyboardMutex)
-				}
-				for j, word2 := range words {
-					if i != j {
-						if weights[j] < 0 {
-							weights[j] = common.CalculateWeight(word2, &keyboard, &keyboardMutex)
-						}
-						dist := weights[i] + weights[j] + common.CalculateWeight(word1[len(word1)-1:]+word2[:1], &keyboard, &keyboardMutex)
-						if dist < minDist {
-							minDist = dist
-							minIdx = j
-						}
-					}
-				}
-				bestWordsMutex.Lock()
-				bestNextWords[i] = minIdx
-				bestWordsMutex.Unlock()
+				word := words[i]
+				weight := common.CalculateWeight(word, keyboard)
+				wordWithWeight := WordWithWeight{word, i, weight}
+
+				weightsMutex.Lock()
+				weights[i] = weight
+				weightsMutex.Unlock()
+
+				weightsChannel <- wordWithWeight
 			}
 		}(start, end)
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(weightsChannel)
+	}()
 
-	// Start analyzing chains of optimal words
-	minDist := math.MaxInt32
-	var minPath [4]int
+	wordMap := make(map[byte]*MinHeap)
+	for wordWithWeight := range weightsChannel {
+		firstLetter := wordWithWeight.word[0]
+		if _, exists := wordMap[firstLetter]; !exists {
+			minHeap := &MinHeap{}
+			heap.Init(minHeap)
+			heap.Push(minHeap, wordWithWeight)
+			wordMap[firstLetter] = minHeap
+		} else {
+			heap.Push(wordMap[firstLetter], wordWithWeight)
+		}
+	}
 
+	resultCh := make(chan Result)
+	wordMapMutex := sync.RWMutex{}
 	wg.Add(workerCount)
 	for worker := 0; worker < workerCount; worker++ {
 		start := worker * step
@@ -87,30 +92,52 @@ func Find(dictPath string) {
 		if end > len(words) {
 			end = len(words)
 		}
-		go func(start, end int) {
+		go func(start, end, worker int) {
 			defer wg.Done()
+			minDist := math.MaxInt32
+			var minPath []int
 			for i := start; i < end; i++ {
 				currentPath := make([]int, 4)
-				currentDist := weights[i]
 				chainLength := 0
 				current := i
-				for j := 0; j < 4; j++ {
-					currentPath[j] = current
-					chainLength += len(words[current])
-					if j > 0 {
-						currentDist += weights[current]
-						currentDist += common.CalculateWeight(words[currentPath[j-1]][len(words[currentPath[j-1]])-1:]+words[current][:1], &keyboard, &keyboardMutex)
-					}
-					bestWordsMutex.RLock()
-					current = bestNextWords[current]
-					bestWordsMutex.RUnlock()
-				}
 
-				if currentDist < minDist && chainLength >= 20 && chainLength <= 24 {
-					resultCh <- [5]int{currentDist, currentPath[0], currentPath[1], currentPath[2], currentPath[3]}
+				weightsMutex.Lock()
+				currentDist := weights[i]
+				weightsMutex.Unlock()
+
+				for j := 0; j < numberOfWords; j++ {
+					currentPath[j] = current
+					currentWord := words[current]
+					currentWordLength := len(currentWord)
+					lastLetter := currentWord[currentWordLength-1]
+					chainLength += currentWordLength
+
+					currentHeap := new(MinHeap)
+
+					wordMapMutex.Lock()
+					*currentHeap = *wordMap[lastLetter]
+					wordMapMutex.Unlock()
+
+					var currentItem WordWithWeight
+					for ok := true; ok; ok = slices.Contains(currentPath, currentItem.idx) {
+						if len(*currentHeap) <= 0 {
+							fmt.Printf("failed chain - no candidates left\n")
+							return
+						}
+						currentItem = heap.Pop(currentHeap).(WordWithWeight)
+					}
+					currentDist += currentItem.weight
+
+					current = currentItem.idx
+				}
+				if currentDist < minDist && chainLength >= startLength && chainLength <= endLength {
+					// fmt.Printf("[%v]Candidate words are: %v, %v, %v, and %v with weight %v (previous %v)\n", worker, words[currentPath[0]], words[currentPath[1]], words[currentPath[2]], words[currentPath[3]], currentDist, minDist)
+					minDist = currentDist
+					minPath = currentPath
 				}
 			}
-		}(start, end)
+			resultCh <- Result{minDist, minPath}
+		}(start, end, worker)
 	}
 
 	// Start a goroutine to close the result channel when all workers are done
@@ -119,13 +146,15 @@ func Find(dictPath string) {
 		close(resultCh)
 	}()
 
+	minDist := math.MaxInt32
+	var minPath []int
 	// Process the results
 	for result := range resultCh {
-		if result[0] < minDist {
-			minDist = result[0]
-			minPath = [4]int{result[1], result[2], result[3], result[4]}
+		if result.minDist < minDist {
+			minDist = result.minDist
+			minPath = result.path
 		}
 	}
 
-	fmt.Printf("The four words are: %v, %v, %v, and %v\n", words[minPath[0]], words[minPath[1]], words[minPath[2]], words[minPath[3]])
+	fmt.Printf("The four words are: %v, %v, %v, and %v with weight %v\n", words[minPath[0]], words[minPath[1]], words[minPath[2]], words[minPath[3]], minDist)
 }

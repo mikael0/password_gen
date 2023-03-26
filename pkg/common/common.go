@@ -3,9 +3,7 @@ package common
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
-	"sync"
 )
 
 // Define a function that reads the words from a file
@@ -29,15 +27,20 @@ func ReadWordsFromFile(filename string) []string {
 }
 
 // Define a function that calculates the weight of a word
-func CalculateWeight(word string, keyboard *map[byte][2]int, keyboardMutex *sync.RWMutex) int {
+func CalculateWeight(word string, keyboard map[byte][2]int) int {
 	weight := 0
 	for i := 0; i < len(word)-1; i++ {
-		(*keyboardMutex).RLock()
-		pos1 := (*keyboard)[word[i]]
-		pos2 := (*keyboard)[word[i+1]]
-		(*keyboardMutex).RUnlock()
-		dist := int(math.Abs(float64(pos1[0]-pos2[0])) + math.Abs(float64(pos1[1]-pos2[1])))
+		pos1 := keyboard[word[i]]
+		pos2 := keyboard[word[i+1]]
+		dist := absDiffInt(pos1[0], pos2[0]) + absDiffInt(pos1[1], pos2[1])
 		weight += dist
 	}
 	return weight
+}
+
+func absDiffInt(x, y int) int {
+	if x < y {
+		return y - x
+	}
+	return x - y
 }

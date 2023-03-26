@@ -3,15 +3,20 @@ package optimal
 import (
 	"fmt"
 	"math"
+	"password_gen/m/v2/pkg/common"
 	"runtime"
 	"sync"
-	"password_gen/m/v2/pkg/common"
 )
 
-//Naive approach comparing each combinations in O(n^4)
-func Find(dictPath string) {
+type Result struct {
+	minDist int
+	path    []int
+}
+
+// Naive approach comparing each combinations in O(n^4)
+func Find(dictPath string, startLength int, endLength int, numberOfWords int) {
 	minDist := math.MaxInt32
-	var minPath [4]int
+	var minPath []int
 
 	// Define a map of the keyboard keys and their positions
 	keyboard := map[byte][2]int{
@@ -19,7 +24,6 @@ func Find(dictPath string) {
 		'a': {1, 0}, 's': {1, 1}, 'd': {1, 2}, 'f': {1, 3}, 'g': {1, 4}, 'h': {1, 5}, 'j': {1, 6}, 'k': {1, 7}, 'l': {1, 8},
 		'z': {2, 0}, 'x': {2, 1}, 'c': {2, 2}, 'v': {2, 3}, 'b': {2, 4}, 'n': {2, 5}, 'm': {2, 6},
 	}
-	keyboardMutex := sync.RWMutex{}
 
 	words := common.ReadWordsFromFile(dictPath)
 
@@ -29,7 +33,7 @@ func Find(dictPath string) {
 	wg.Add(workerCount)
 
 	// Create a channel to communicate the results from the worker goroutines
-	resultCh := make(chan [5]int)
+	resultCh := make(chan Result)
 
 	// Start the worker goroutines
 	step := (len(words)) / workerCount
@@ -49,10 +53,10 @@ func Find(dictPath string) {
 					for k := 0; k < len(words); k++ {
 						for l := 0; l < len(words); l++ {
 							combined := words[i] + words[j] + words[k] + words[l]
-							if len(combined) < 20 || len(combined) > 24 {
+							if len(combined) < startLength || len(combined) > endLength {
 								continue
 							}
-							dist := common.CalculateWeight(combined, &keyboard, &keyboardMutex)
+							dist := common.CalculateWeight(combined, keyboard)
 							if dist < localMinDist && i != j && i != k && i != l && j != k && j != l && k != l {
 								localMinDist = dist
 								localMinPath = [4]int{i, j, k, l}
@@ -61,7 +65,7 @@ func Find(dictPath string) {
 					}
 				}
 			}
-			resultCh <- [5]int{localMinDist, localMinPath[0], localMinPath[1], localMinPath[2], localMinPath[3]}
+			resultCh <- Result{localMinDist, localMinPath[:]}
 		}(start, end)
 	}
 
@@ -73,9 +77,9 @@ func Find(dictPath string) {
 
 	// Process the results
 	for result := range resultCh {
-		if result[0] < minDist {
-			minDist = result[0]
-			minPath = [4]int{result[1], result[2], result[3], result[4]}
+		if result.minDist < minDist {
+			minDist = result.minDist
+			minPath = result.path
 		}
 	}
 
