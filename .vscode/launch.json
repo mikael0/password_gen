@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["-dict",  "words.txt", "-mode", "fast"]
+            "args": ["-dict",  "words.txt", "-mode", "optimal"]
         }
     ]
 }

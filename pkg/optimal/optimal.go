@@ -4,84 +4,157 @@ import (
 	"fmt"
 	"math"
 	"password_gen/m/v2/pkg/common"
-	"runtime"
-	"sync"
+	"sort"
 )
 
-type Result struct {
-	minDist int
-	path    []int
+type WordEntry struct {
+	Weight    int
+	word      string
+	firstChar byte
 }
 
-// Naive approach comparing each combinations in O(n^4)
-func Find(dictPath string, startLength int, endLength int, numberOfWords int) {
-	minDist := math.MaxInt32
-	var minPath []int
+type Engine struct {
+	dictionary         []WordEntry
+	optimalWeight      int
+	optimalWordIndices []int
+}
 
-	// Define a map of the keyboard keys and their positions
-	keyboard := map[byte][2]int{
-		'q': {0, 0}, 'w': {0, 1}, 'e': {0, 2}, 'r': {0, 3}, 't': {0, 4}, 'y': {0, 5}, 'u': {0, 6}, 'i': {0, 7}, 'o': {0, 8}, 'p': {0, 9},
-		'a': {1, 0}, 's': {1, 1}, 'd': {1, 2}, 'f': {1, 3}, 'g': {1, 4}, 'h': {1, 5}, 'j': {1, 6}, 'k': {1, 7}, 'l': {1, 8},
-		'z': {2, 0}, 'x': {2, 1}, 'c': {2, 2}, 'v': {2, 3}, 'b': {2, 4}, 'n': {2, 5}, 'm': {2, 6},
+func (engine *Engine) find(charDistances [][]int, size, minLength, maxLength, minWordLength int) {
+	if len(engine.dictionary) < size {
+		return
 	}
 
-	words := common.ReadWordsFromFile(dictPath)
+	maxWordLength := maxLength - (size-1)*minWordLength
+	engine.optimalWordIndices = make([]int, size)
 
-	// Set the number of worker goroutines
-	workerCount := runtime.GOMAXPROCS(0)
-	var wg sync.WaitGroup
-	wg.Add(workerCount)
+	visited := make([]int, size)
+	for i := 0; i < size; i++ {
+		visited[i] = -1
+	}
 
-	// Create a channel to communicate the results from the worker goroutines
-	resultCh := make(chan Result)
+	weightLengthData := make([]struct {
+		Weight int
+		length int
+	}, size)
 
-	// Start the worker goroutines
-	step := (len(words)) / workerCount
-	for worker := 0; worker < workerCount; worker++ {
-		start := worker * step
-		end := (worker + 1) * step
-		if end > len(words) {
-			end = len(words)
+	for index, word := range engine.dictionary {
+		curWeight := word.Weight
+		curLength := len(word.word)
+		if curWeight >= engine.optimalWeight {
+			break
 		}
-		fmt.Printf("starting %v to %v\n", start, end)
-		go func(start, end int) {
-			defer wg.Done()
-			var localMinDist int = math.MaxInt32
-			var localMinPath [4]int
-			for i := start; i < end; i++ {
-				for j := 0; j < len(words); j++ {
-					for k := 0; k < len(words); k++ {
-						for l := 0; l < len(words); l++ {
-							combined := words[i] + words[j] + words[k] + words[l]
-							if len(combined) < startLength || len(combined) > endLength {
-								continue
-							}
-							dist := common.CalculateWeight(combined, keyboard)
-							if dist < localMinDist && i != j && i != k && i != l && j != k && j != l && k != l {
-								localMinDist = dist
-								localMinPath = [4]int{i, j, k, l}
-							}
-						}
+		if curLength > maxWordLength {
+			continue
+		}
+
+		weightLengthData[0] = struct {
+			Weight int
+			length int
+		}{curWeight, curLength}
+		wordIndices := []int{index}
+		for len(wordIndices) > 0 {
+			lastWord := engine.dictionary[wordIndices[len(wordIndices)-1]].word
+			lastChar := lastWord[len(lastWord)-1] - 'a'
+			visitedLimit := visited[len(wordIndices)]
+			foundNext := false
+			for i, nextWord := range engine.dictionary {
+				newWeight := weightLengthData[len(wordIndices)-1].Weight + nextWord.Weight
+				if newWeight >= engine.optimalWeight {
+					break
+				}
+
+				if i <= visitedLimit || len(nextWord.word) > maxWordLength {
+					continue
+				}
+				newWeight += charDistances[lastChar][nextWord.firstChar]
+				if newWeight >= engine.optimalWeight {
+					continue
+				}
+				newLength := weightLengthData[len(wordIndices)-1].length + len(nextWord.word)
+				if newLength > maxLength || contains(wordIndices, i) {
+					continue
+				}
+
+				visited[len(wordIndices)] = i
+				if len(wordIndices) == size-1 {
+					if newLength >= minLength && newLength <= maxLength {
+						engine.optimalWeight = newWeight
+						copy(engine.optimalWordIndices, append(wordIndices, i))
 					}
+					continue
+				}
+
+				weightLengthData[len(wordIndices)] = struct {
+					Weight int
+					length int
+				}{newWeight, newLength}
+				wordIndices = append(wordIndices, i)
+				foundNext = true
+				break
+			}
+			if !foundNext {
+				wordIndices = wordIndices[:len(wordIndices)-1]
+				for i := len(wordIndices) + 1; i < size; i++ {
+					visited[i] = -1
 				}
 			}
-			resultCh <- Result{localMinDist, localMinPath[:]}
-		}(start, end)
+		}
 	}
+}
 
-	// Start a goroutine to close the result channel when all workers are done
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	// Process the results
-	for result := range resultCh {
-		if result.minDist < minDist {
-			minDist = result.minDist
-			minPath = result.path
+func contains(arr []int, elem int) bool {
+	for _, element := range arr {
+		if elem == element {
+			return true
 		}
 	}
 
-	fmt.Printf("The four words are: %v, %v, %v, and %v\n", words[minPath[0]], words[minPath[1]], words[minPath[2]], words[minPath[3]])
+	return false
+}
+
+func Find(path string, min, max, length int) {
+	dict := common.ReadWordsFromFile(path)
+
+	minWordLength := 0
+	sortedDict := make([]WordEntry, len(dict))
+
+	for i := range dict {
+		word := dict[i]
+		sortedDict[i] = WordEntry{common.CalculateWeight(word), word, word[0] - 'a'}
+	}
+
+	sort.Slice(sortedDict, func(i, j int) bool {
+		return sortedDict[i].Weight < sortedDict[j].Weight
+	})
+
+	alphabetLength := len(common.Alphabet)
+	charDistances := make([][]int, alphabetLength)
+	for i := 0; i < alphabetLength; i++ {
+		charDistances[i] = make([]int, alphabetLength)
+		for j := 0; j < alphabetLength; j++ {
+			charDistances[i][j] = common.DistBytes(common.Alphabet[i], common.Alphabet[j])
+		}
+	}
+
+	engine := &Engine{dictionary: sortedDict, optimalWeight: math.MaxInt32}
+	engine.find(charDistances, length, min, max, minWordLength)
+
+	totalWeight := 0
+	totalLength := 0
+	var lastChar byte
+	fmt.Printf("Words are \n")
+	for _, i := range engine.optimalWordIndices {
+		wordEntry := engine.dictionary[i]
+		totalWeight += wordEntry.Weight
+		currWord := wordEntry.word
+		totalLength += len(currWord)
+
+		fmt.Printf("%s (%v)\n", currWord, wordEntry.Weight)
+
+		if lastChar != 0 {
+			totalWeight += charDistances[lastChar-'a'][currWord[0]-'a']
+		}
+		lastChar = currWord[len(currWord)-1]
+	}
+	fmt.Printf("With weight %v and length %v \n", totalWeight, totalLength)
 }

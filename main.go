@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"password_gen/m/v2/pkg/fast"
 	"password_gen/m/v2/pkg/optimal"
 )
 
@@ -27,8 +26,6 @@ func main() {
 	}
 
 	switch *mode {
-	case "fast":
-		fast.Find(*dictPath, 20, 24, 4)
 	case "optimal":
 		optimal.Find(*dictPath, 20, 24, 4)
 	}
